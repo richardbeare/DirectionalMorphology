@@ -1,0 +1,5 @@
+Apply erosions and dilations along lines at angles defined by a vector
+field (typically derived from the gradient of a distance
+transform). The positions at which the lines start will be defined by
+a mask. This is a slightly dodgy operations, since lines can
+intersect. The lines will therefore won't be processed in place.

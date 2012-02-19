@@ -4,13 +4,14 @@
 #include "itkImageToImageFilter.h"
 #include "itkNumericTraits.h"
 #include "itkProgressReporter.h"
+#include "itkBresenhamLine.h"
 
 namespace itk
 {
 /**
  * \class DirectionalErodeDilateImageFilter
  * \brief Parent class for morphological operations along lines defined
- * by a vector field. Operations applied whereever the vector field is
+ * by a vector field. Operations applied whereever the mask image is
  * non zero.
  *
  *
@@ -22,6 +23,7 @@ namespace itk
 
 template <typename TInputImage,
 	  typename TVectorImage,
+	  typename TMaskImage,
 	  bool doDilate,
           typename TOutputImage= TInputImage >
 class ITK_EXPORT DirectionalErodeDilateImageFilter:
@@ -45,6 +47,7 @@ public:
   typedef TInputImage                                    InputImageType;
   typedef TOutputImage                                   OutputImageType;
   typedef TVectorImage                                   VectorImageType;
+  typedef TMaskImage                                     MaskImageType;
 
   typedef typename TInputImage::PixelType                PixelType;
   typedef typename NumericTraits<PixelType>::RealType    RealType;
@@ -59,9 +62,6 @@ public:
 
   typedef typename OutputImageType::IndexType       OutputIndexType;
 
-  /** a type to represent the "kernel radius" */
-  typedef typename itk::FixedArray<ScalarRealType, TInputImage::ImageDimension> RadiusType;
-
   /** Image dimension. */
   itkStaticConstMacro(ImageDimension, unsigned int,
                       TInputImage::ImageDimension);
@@ -71,17 +71,10 @@ public:
                       TInputImage::ImageDimension);
 
 
-  typedef typename OutputImageType::RegionType OutputImageRegionType;
-  /** Define the image type for internal computations
-      RealType is usually 'double' in NumericTraits.
-      Here we prefer float in order to save memory.  */
-
-  typedef typename NumericTraits< PixelType >::FloatType   InternalRealType;
-  //typedef typename Image<InternalRealType, itkGetStaticConstMacro(ImageDimension) >   RealImageType;
   void SetVectorImage(TVectorImage *input)
   {
     // Process object is not const-correct so the const casting is required.
-    this->SetNthInput( 1, const_cast<TMaskImage *>(input) );
+    this->SetNthInput( 1, const_cast<TVectorImage *>(input) );
   }
   VectorImageType * GetVectorImage()
   {
@@ -89,15 +82,44 @@ public:
 
   }
 
+  void SetMaskImage(TMaskImage *input)
+  {
+    // Process object is not const-correct so the const casting is required.
+    this->SetNthInput( 2, const_cast<TMaskImage *>(input) );
+  }
+  MaskImageType * GetMaskImage()
+  {
+    return static_cast<MaskImageType*>(const_cast<DataObject *>(this->ProcessObject::GetInput(2)));
 
+  }
 
   /**
    * Set/Get whether the scale refers to pixels or world units -
-   * default is false
+   * default is true
    */
   itkSetMacro(UseImageSpacing, bool);
   itkGetConstReferenceMacro(UseImageSpacing, bool);
   itkBooleanMacro(UseImageSpacing);
+
+  /**
+   * Set/Get whether the scale refers to pixels or world units -
+   * default is true
+   */
+  itkSetMacro(LineLength, float);
+  itkGetConstReferenceMacro(LineLength, float);
+
+  itkSetMacro(FilterLength, float);
+  itkGetConstReferenceMacro(FilterLength, float);
+
+
+  /**
+   * Set/Get whether the scale refers to pixels or world units -
+   * default is true
+   */
+  itkSetMacro(UseImageSpacing, bool);
+  itkGetConstReferenceMacro(UseImageSpacing, bool);
+  itkBooleanMacro(UseImageSpacing);
+
   /** Image related typedefs. */
  
 #ifdef ITK_USE_CONCEPT_CHECKING
@@ -116,25 +138,24 @@ protected:
   virtual ~DirectionalErodeDilateImageFilter() {};
   void PrintSelf(std::ostream& os, Indent indent) const;
   
+  void GenerateInputRequestedRegion();
+
+  void EnlargeOutputRequestedRegion(DataObject *itkNotUsed(output));
+
+
   /** Generate Data */
   void GenerateData( void );
-  unsigned int SplitRequestedRegion(unsigned int i, unsigned int num,
-    OutputImageRegionType & splitRegion);
 
-  void ThreadedGenerateData(const OutputImageRegionType& outputRegionForThread, ThreadIdType threadId );
-
-  void GenerateInputRequestedRegion() throw(InvalidRequestedRegionError);
-  // Override since the filter produces the entire dataset.
-  void EnlargeOutputRequestedRegion(DataObject *output);
-
-  float m_Length;
-  
+  float m_LineLength;
+  float m_FilterLength;
+  bool m_UseImageSpacing;
 private:
   DirectionalErodeDilateImageFilter(const Self&); //purposely not implemented
   void operator=(const Self&); //purposely not implemented
 
-  int m_MagnitudeSign;
-  int m_CurrentDimension;
+  typedef BresenhamLine< itkGetStaticConstMacro(InputImageDimension) > BresType;
+
+
 };
 
 } // end namespace itk
