@@ -1,5 +1,5 @@
-#ifndef __itkDirectionalGradientImageFilter_txx
-#define __itkDirectionalGradientImageFilter_txx
+#ifndef __itkDirectionalErodeDilateImageFilter_txx
+#define __itkDirectionalErodeDilateImageFilter_txx
 
 #include "itkDirectionalErodeDilateImageFilter.h"
 #include "itkProgressAccumulator.h"
