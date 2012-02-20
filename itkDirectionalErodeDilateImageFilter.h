@@ -24,16 +24,15 @@ namespace itk
 template <typename TInputImage,
 	  typename TVectorImage,
 	  typename TMaskImage,
-	  bool doDilate,
-          typename TOutputImage= TInputImage >
+	  class TFunction1 >
 class ITK_EXPORT DirectionalErodeDilateImageFilter:
-    public ImageToImageFilter<TInputImage,TOutputImage>
+    public ImageToImageFilter<TInputImage,TInputImage>
 {
 
 public:
   /** Standard class typedefs. */
   typedef DirectionalErodeDilateImageFilter  Self;
-  typedef ImageToImageFilter<TInputImage,TOutputImage> Superclass;
+  typedef ImageToImageFilter<TInputImage,TInputImage> Superclass;
   typedef SmartPointer<Self>                   Pointer;
   typedef SmartPointer<const Self>        ConstPointer;
 
@@ -45,20 +44,20 @@ public:
 
   /** Pixel Type of the input image */
   typedef TInputImage                                    InputImageType;
-  typedef TOutputImage                                   OutputImageType;
+  typedef TInputImage                                   OutputImageType;
   typedef TVectorImage                                   VectorImageType;
   typedef TMaskImage                                     MaskImageType;
 
   typedef typename TInputImage::PixelType                PixelType;
   typedef typename NumericTraits<PixelType>::RealType    RealType;
   typedef typename NumericTraits<PixelType>::ScalarRealType ScalarRealType;
-  typedef typename TOutputImage::PixelType  OutputPixelType;
+  typedef typename OutputImageType::PixelType  OutputPixelType;
 
   /** Smart pointer typedef support.  */
   typedef typename TInputImage::Pointer  InputImagePointer;
   typedef typename TInputImage::ConstPointer  InputImageConstPointer;
   typedef typename TInputImage::SizeType    InputSizeType;
-  typedef typename TOutputImage::SizeType   OutputSizeType;
+  typedef typename OutputImageType::SizeType   OutputSizeType;
 
   typedef typename OutputImageType::IndexType       OutputIndexType;
 
@@ -66,7 +65,7 @@ public:
   itkStaticConstMacro(ImageDimension, unsigned int,
                       TInputImage::ImageDimension);
   itkStaticConstMacro(OutputImageDimension, unsigned int,
-                      TOutputImage::ImageDimension);
+                      TInputImage::ImageDimension);
   itkStaticConstMacro(InputImageDimension, unsigned int,
                       TInputImage::ImageDimension);
 
@@ -112,14 +111,6 @@ public:
   itkGetConstReferenceMacro(FilterLength, float);
 
 
-  /**
-   * Set/Get whether the scale refers to pixels or world units -
-   * default is true
-   */
-  itkSetMacro(UseImageSpacing, bool);
-  itkGetConstReferenceMacro(UseImageSpacing, bool);
-  itkBooleanMacro(UseImageSpacing);
-
   /** Image related typedefs. */
  
 #ifdef ITK_USE_CONCEPT_CHECKING
@@ -149,6 +140,11 @@ protected:
   float m_LineLength;
   float m_FilterLength;
   bool m_UseImageSpacing;
+  PixelType m_Boundary;
+
+  void OneLine(unsigned bsize, unsigned OpLength, std::vector<PixelType> &buffer,
+	       std::vector<PixelType> &forward, std::vector<PixelType> &reverse,
+	       TFunction1 &TF);
 private:
   DirectionalErodeDilateImageFilter(const Self&); //purposely not implemented
   void operator=(const Self&); //purposely not implemented
