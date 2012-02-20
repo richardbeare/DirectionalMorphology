@@ -17,7 +17,8 @@ namespace itk
  * Australia.  <Richard.Beare@monash.edu>
  *
 **/
-
+namespace Directional
+{
 template< class TPixel >
 class MinFunctor
 {
@@ -29,19 +30,19 @@ public:
     return vnl_math_min(A, B);
   }
 };
-
+}
 template <typename TInputImage,
 	  typename TVectorImage,
 	  typename TMaskImage
 	   >
 class ITK_EXPORT DirectionalErodeImageFilter:
-    public DirectionalErodeDilateImageFilter<TInputImage,TVectorImage,TMaskImage, MinFunctor<typename TInputImage::PixelType> >
+    public DirectionalErodeDilateImageFilter<TInputImage,TVectorImage,TMaskImage, Directional::MinFunctor<typename TInputImage::PixelType> >
 {
 
 public:
   /** Standard class typedefs. */
   typedef DirectionalErodeImageFilter  Self;
-  typedef DirectionalErodeDilateImageFilter<TInputImage,TVectorImage,TMaskImage, MinFunctor<typename TInputImage::PixelType> > Superclass;
+  typedef DirectionalErodeDilateImageFilter<TInputImage,TVectorImage,TMaskImage, Directional::MinFunctor<typename TInputImage::PixelType> > Superclass;
   typedef SmartPointer<Self>                   Pointer;
   typedef SmartPointer<const Self>        ConstPointer;
 
