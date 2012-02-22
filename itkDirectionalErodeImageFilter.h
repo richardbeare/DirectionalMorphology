@@ -32,17 +32,17 @@ public:
 };
 }
 template <typename TInputImage,
-	  typename TVectorImage,
-	  typename TMaskImage
+	  typename TMaskImage,
+	  typename TVectorImage=Image<CovariantVector<float, TInputImage::ImageDimension>, TInputImage::ImageDimension >
 	   >
 class ITK_EXPORT DirectionalErodeImageFilter:
-    public DirectionalErodeDilateImageFilter<TInputImage,TVectorImage,TMaskImage, Directional::MinFunctor<typename TInputImage::PixelType> >
+    public DirectionalErodeDilateImageFilter<TInputImage,TMaskImage, TVectorImage, Directional::MinFunctor<typename TInputImage::PixelType> >
 {
 
 public:
   /** Standard class typedefs. */
   typedef DirectionalErodeImageFilter  Self;
-  typedef DirectionalErodeDilateImageFilter<TInputImage,TVectorImage,TMaskImage, Directional::MinFunctor<typename TInputImage::PixelType> > Superclass;
+  typedef DirectionalErodeDilateImageFilter<TInputImage,TMaskImage,TVectorImage, Directional::MinFunctor<typename TInputImage::PixelType> > Superclass;
   typedef SmartPointer<Self>                   Pointer;
   typedef SmartPointer<const Self>        ConstPointer;
 

@@ -20,11 +20,25 @@ namespace itk
  *
 **/
 
+namespace Directional 
+{
+template< class TPixel >
+class MaxFunctor
+{
+public:
+  MaxFunctor(){}
+  ~MaxFunctor(){}
+  inline TPixel operator()(const TPixel & A, const TPixel & B) const
+  {
+    return vnl_math_max(A, B);
+  }
+};
+}
 
 template <typename TInputImage,
-	  typename TVectorImage,
 	  typename TMaskImage,
-	  class TFunction1 >
+	  typename TVectorImage=TInputImage,
+	  class TFunction1=Directional::MaxFunctor<typename TInputImage::PixelType> >
 class ITK_EXPORT DirectionalErodeDilateImageFilter:
     public ImageToImageFilter<TInputImage,TInputImage>
 {
@@ -57,6 +71,7 @@ public:
   typedef typename TInputImage::Pointer  InputImagePointer;
   typedef typename TInputImage::ConstPointer  InputImageConstPointer;
   typedef typename TInputImage::SizeType    InputSizeType;
+  typedef typename TInputImage::IndexType   InputIndexType;
   typedef typename OutputImageType::SizeType   OutputSizeType;
 
   typedef typename OutputImageType::IndexType       OutputIndexType;
@@ -73,24 +88,31 @@ public:
   void SetVectorImage(TVectorImage *input)
   {
     // Process object is not const-correct so the const casting is required.
-    this->SetNthInput( 1, const_cast<TVectorImage *>(input) );
+    this->SetNthInput( 2, const_cast<TVectorImage *>(input) );
   }
   VectorImageType * GetVectorImage()
   {
-    return static_cast<VectorImageType*>(const_cast<DataObject *>(this->ProcessObject::GetInput(1)));
+    return static_cast<VectorImageType*>(const_cast<DataObject *>(this->ProcessObject::GetInput(2)));
 
   }
 
   void SetMaskImage(TMaskImage *input)
   {
     // Process object is not const-correct so the const casting is required.
-    this->SetNthInput( 2, const_cast<TMaskImage *>(input) );
+    this->SetNthInput( 1, const_cast<TMaskImage *>(input) );
   }
   MaskImageType * GetMaskImage()
   {
-    return static_cast<MaskImageType*>(const_cast<DataObject *>(this->ProcessObject::GetInput(2)));
+    return static_cast<MaskImageType*>(const_cast<DataObject *>(this->ProcessObject::GetInput(1)));
 
   }
+  
+  /** 
+   * Set/Get the target index. This is used if the VectorImage is not
+   * set. Default is [0,0,...]
+   */
+  itkSetMacro(TargetIndex, InputIndexType);
+  itkGetConstReferenceMacro(TargetIndex, InputIndexType);
 
   /**
    * Set/Get whether the scale refers to pixels or world units -
@@ -136,6 +158,8 @@ protected:
 
   /** Generate Data */
   void GenerateData( void );
+
+  InputIndexType  m_TargetIndex;
 
   float m_LineLength;
   float m_FilterLength;

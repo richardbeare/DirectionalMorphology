@@ -38,20 +38,20 @@ int main(int argc, char * argv[])
   gradDT->SetInput(DT->GetOutput());
 #endif
 
-  typedef itk::DirectionalErodeImageFilter<ImageType, GradImType, MaskType > DirErodeType;
-  typedef itk::DirectionalDilateImageFilter<ImageType, GradImType, MaskType > DirDilateType;
+  typedef itk::DirectionalErodeImageFilter<ImageType, MaskType> DirErodeType;
+  typedef itk::DirectionalDilateImageFilter<ImageType, MaskType> DirDilateType;
 
   DirErodeType::Pointer DE = DirErodeType::New();
   DE->SetLineLength(150);
   DE->SetFilterLength(20);
   DE->SetUseImageSpacing(true);
   DE->SetInput(raw);
-  DE->SetVectorImage(gradDT->GetOutput());
+//  DE->SetVectorImage(gradDT->GetOutput());
   DE->SetMaskImage(locationmask);
 
   DirDilateType::Pointer DD = DirDilateType::New();
   DD->SetInput(DE->GetOutput());
-  DD->SetVectorImage(gradDT->GetOutput());
+//  DD->SetVectorImage(gradDT->GetOutput());
   DD->SetMaskImage(locationmask);
 
   DD->SetLineLength(DE->GetLineLength());

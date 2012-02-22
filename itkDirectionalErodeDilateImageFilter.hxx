@@ -8,19 +8,20 @@
 
 namespace itk
 {
-template<class TInputImage, class TVectorImage, class TMaskImage, class TFunction1>
-DirectionalErodeDilateImageFilter<TInputImage, TVectorImage, TMaskImage, TFunction1>
+template<class TInputImage, class TMaskImage, class TVectorImage, class TFunction1>
+DirectionalErodeDilateImageFilter<TInputImage, TMaskImage, TVectorImage, TFunction1>
 ::DirectionalErodeDilateImageFilter()
 {
   m_LineLength = -1.0;
   m_FilterLength = -1.0;
   m_UseImageSpacing = true;
-  this->SetNumberOfRequiredInputs(3);
+  this->SetNumberOfRequiredInputs(2);
+  m_TargetIndex.Fill(0);
 }
 
-template<class TInputImage, class TVectorImage, class TMaskImage, class TFunction1>
+template<class TInputImage, class TMaskImage, class TVectorImage, class TFunction1>
 void
-DirectionalErodeDilateImageFilter<TInputImage, TVectorImage, TMaskImage, TFunction1>
+DirectionalErodeDilateImageFilter<TInputImage, TMaskImage, TVectorImage, TFunction1>
 ::GenerateInputRequestedRegion()
 {
   // call the superclass' implementation of this method
@@ -32,7 +33,7 @@ DirectionalErodeDilateImageFilter<TInputImage, TVectorImage, TMaskImage, TFuncti
   typename MaskImageType::Pointer mask = this->GetMaskImage();
 
   
-  if ( !mask || !input || !vec )
+  if ( !mask || !input )
     { return; }
 
   // We need to
@@ -43,17 +44,17 @@ DirectionalErodeDilateImageFilter<TInputImage, TVectorImage, TMaskImage, TFuncti
   vec->SetRequestedRegion(vec->GetLargestPossibleRegion());
 }
 
-template<class TInputImage, class TVectorImage, class TMaskImage, class TFunction1>
+template<class TInputImage, class TMaskImage, class TVectorImage, class TFunction1>
 void
-DirectionalErodeDilateImageFilter<TInputImage, TVectorImage, TMaskImage, TFunction1>
+DirectionalErodeDilateImageFilter<TInputImage, TMaskImage, TVectorImage, TFunction1>
 ::EnlargeOutputRequestedRegion(DataObject *)
 {
   this->GetOutput()->SetRequestedRegion( this->GetOutput()->GetLargestPossibleRegion() );
 }
 
-template<class TInputImage, class TVectorImage, class TMaskImage, class TFunction1>
+template<class TInputImage, class TMaskImage, class TVectorImage, class TFunction1>
 void
-DirectionalErodeDilateImageFilter<TInputImage, TVectorImage, TMaskImage, TFunction1>
+DirectionalErodeDilateImageFilter<TInputImage, TMaskImage, TVectorImage, TFunction1>
 ::GenerateData()
 {
 
@@ -99,8 +100,21 @@ DirectionalErodeDilateImageFilter<TInputImage, TVectorImage, TMaskImage, TFuncti
       {
       // we are going filter along a line starting at this point
       typename MaskImageType::IndexType start = maskIt.GetIndex();
-      typename VectorImageType::PixelType orientation = vec->GetPixel(start);
-      orientation.Normalize();  // just in case it isn't from a DT
+      typename VectorImageType::PixelType orientation;
+      if (vec)
+	{
+	orientation = vec->GetPixel(start);
+	orientation.Normalize();  // just in case it isn't from a DT
+	}
+      else
+	{
+	// we are using target index
+	for (unsigned k = 0; k < MaskImageType::ImageDimension; k++)
+	  {
+	  orientation[k] = m_TargetIndex[k] - start[k];
+	  }
+	orientation.Normalize();
+	}
       typename MaskImageType::OffsetType off;
       unsigned OpLength = m_FilterLength;
       if (this->GetUseImageSpacing())
@@ -169,9 +183,9 @@ DirectionalErodeDilateImageFilter<TInputImage, TVectorImage, TMaskImage, TFuncti
 
 }
 
-template<class TInputImage, class TVectorImage, class TMaskImage, class TFunction1>
+template<class TInputImage, class TMaskImage, class TVectorImage, class TFunction1>
 void
-DirectionalErodeDilateImageFilter<TInputImage, TVectorImage, TMaskImage, TFunction1>
+DirectionalErodeDilateImageFilter<TInputImage, TMaskImage, TVectorImage, TFunction1>
 ::OneLine(unsigned bsize, unsigned OpLength, std::vector<PixelType> &buffer,
 	  std::vector<PixelType> &forward, std::vector<PixelType> &reverse,
 	  TFunction1 &TF)
@@ -226,9 +240,9 @@ DirectionalErodeDilateImageFilter<TInputImage, TVectorImage, TMaskImage, TFuncti
         }
 }
 
-template<class TInputImage, class TVectorImage, class TMaskImage, class TFunction1>
+template<class TInputImage, class TMaskImage, class TVectorImage, class TFunction1>
 void
-DirectionalErodeDilateImageFilter<TInputImage, TVectorImage, TMaskImage, TFunction1>
+DirectionalErodeDilateImageFilter<TInputImage, TMaskImage, TVectorImage, TFunction1>
 ::PrintSelf(std::ostream& os, Indent indent) const
 {
   Superclass::PrintSelf(os,indent);

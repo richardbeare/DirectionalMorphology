@@ -17,32 +17,18 @@ namespace itk
  * Australia.  <Richard.Beare@monash.edu>
  *
 **/
-namespace Directional 
-{
-template< class TPixel >
-class MaxFunctor
-{
-public:
-  MaxFunctor(){}
-  ~MaxFunctor(){}
-  inline TPixel operator()(const TPixel & A, const TPixel & B) const
-  {
-    return vnl_math_max(A, B);
-  }
-};
-}
 template <typename TInputImage,
-	  typename TVectorImage,
-	  typename TMaskImage
+	  typename TMaskImage,
+	  typename TVectorImage=Image<CovariantVector<float, TInputImage::ImageDimension>, TInputImage::ImageDimension >
 	   >
 class ITK_EXPORT DirectionalDilateImageFilter:
-    public DirectionalErodeDilateImageFilter<TInputImage,TVectorImage,TMaskImage, Directional::MaxFunctor<typename TInputImage::PixelType> >
+    public DirectionalErodeDilateImageFilter<TInputImage,TMaskImage, TVectorImage, Directional::MaxFunctor<typename TInputImage::PixelType> >
 {
 
 public:
   /** Standard class typedefs. */
   typedef DirectionalDilateImageFilter  Self;
-  typedef DirectionalErodeDilateImageFilter<TInputImage,TVectorImage,TMaskImage, Directional::MaxFunctor<typename TInputImage::PixelType> > Superclass;
+  typedef DirectionalErodeDilateImageFilter<TInputImage, TMaskImage, TVectorImage, Directional::MaxFunctor<typename TInputImage::PixelType> > Superclass;
   typedef SmartPointer<Self>                   Pointer;
   typedef SmartPointer<const Self>        ConstPointer;
 
