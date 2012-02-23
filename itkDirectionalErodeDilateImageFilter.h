@@ -132,6 +132,12 @@ public:
   itkSetMacro(FilterLength, float);
   itkGetConstReferenceMacro(FilterLength, float);
 
+  /** 
+   * Set/Get the scale - used to reverse the direction of the
+   * line. Default = 1.0
+   */
+  itkSetMacro(Scale, float);
+  itkGetConstReferenceMacro(Scale, float);
 
   /** Image related typedefs. */
  
@@ -161,6 +167,7 @@ protected:
 
   InputIndexType  m_TargetIndex;
 
+  float m_Scale;
   float m_LineLength;
   float m_FilterLength;
   bool m_UseImageSpacing;

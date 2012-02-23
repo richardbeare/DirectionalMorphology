@@ -41,6 +41,12 @@ int main(int argc, char * argv[])
   typedef itk::DirectionalErodeImageFilter<ImageType, MaskType> DirErodeType;
   typedef itk::DirectionalDilateImageFilter<ImageType, MaskType> DirDilateType;
 
+  ImageType::IndexType middle;
+  for (unsigned i = 0; i < ImageType::ImageDimension; ++i)
+    {
+    middle[i] = raw->GetLargestPossibleRegion().GetSize()[i]/2;
+    }
+
   DirErodeType::Pointer DE = DirErodeType::New();
   DE->SetLineLength(150);
   DE->SetFilterLength(20);
@@ -48,6 +54,8 @@ int main(int argc, char * argv[])
   DE->SetInput(raw);
 //  DE->SetVectorImage(gradDT->GetOutput());
   DE->SetMaskImage(locationmask);
+  DE->SetTargetIndex(middle);
+  DE->SetScale(-1);
 
   DirDilateType::Pointer DD = DirDilateType::New();
   DD->SetInput(DE->GetOutput());
@@ -57,6 +65,8 @@ int main(int argc, char * argv[])
   DD->SetLineLength(DE->GetLineLength());
   DD->SetFilterLength(DE->GetFilterLength());
   DD->SetUseImageSpacing(DE->GetUseImageSpacing());
+  DD->SetTargetIndex(DE->GetTargetIndex());
+  DD->SetScale(DE->GetScale());
   writeIm<ImageType>(DE->GetOutput(), "/tmp/DE.png");
 
   writeIm<ImageType>(DD->GetOutput(), argv[4]);

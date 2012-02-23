@@ -17,6 +17,7 @@ DirectionalErodeDilateImageFilter<TInputImage, TMaskImage, TVectorImage, TFuncti
   m_UseImageSpacing = true;
   this->SetNumberOfRequiredInputs(2);
   m_TargetIndex.Fill(0);
+  m_Scale = 1.0;
 }
 
 template<class TInputImage, class TMaskImage, class TVectorImage, class TFunction1>
@@ -41,7 +42,10 @@ DirectionalErodeDilateImageFilter<TInputImage, TMaskImage, TVectorImage, TFuncti
   //
   mask->SetRequestedRegion(mask->GetLargestPossibleRegion());
   input->SetRequestedRegion(input->GetLargestPossibleRegion());
-  vec->SetRequestedRegion(vec->GetLargestPossibleRegion());
+  if (vec)
+    {
+    vec->SetRequestedRegion(vec->GetLargestPossibleRegion());
+    }
 }
 
 template<class TInputImage, class TMaskImage, class TVectorImage, class TFunction1>
@@ -104,7 +108,6 @@ DirectionalErodeDilateImageFilter<TInputImage, TMaskImage, TVectorImage, TFuncti
       if (vec)
 	{
 	orientation = vec->GetPixel(start);
-	orientation.Normalize();  // just in case it isn't from a DT
 	}
       else
 	{
@@ -113,8 +116,9 @@ DirectionalErodeDilateImageFilter<TInputImage, TMaskImage, TVectorImage, TFuncti
 	  {
 	  orientation[k] = m_TargetIndex[k] - start[k];
 	  }
-	orientation.Normalize();
 	}
+      orientation = m_Scale * orientation;
+      orientation.Normalize();
       typename MaskImageType::OffsetType off;
       unsigned OpLength = m_FilterLength;
       if (this->GetUseImageSpacing())
