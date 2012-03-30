@@ -1,19 +1,20 @@
-#ifndef __itkDirectionalErodeDilateImageFilter_txx
-#define __itkDirectionalErodeDilateImageFilter_txx
+#ifndef __itkDirectionalCloseImageFilter_txx
+#define __itkDirectionalCloseImageFilter_txx
 
-#include "itkDirectionalErodeDilateImageFilter.h"
+#include "itkDirectionalCloseImageFilter.h"
 #include "itkProgressAccumulator.h"
 #include "itkImageRegionConstIterator.h"
 #include <itkVanHerkGilWermanUtilities.h>
 
 namespace itk
 {
-template<class TInputImage, class TMaskImage, class TVectorImage, class TFunction1>
-DirectionalErodeDilateImageFilter<TInputImage, TMaskImage, TVectorImage, TFunction1>
-::DirectionalErodeDilateImageFilter()
+template<class TInputImage, class TMaskImage, class TVectorImage>
+DirectionalCloseImageFilter<TInputImage, TMaskImage, TVectorImage>
+::DirectionalCloseImageFilter()
 {
   m_LineLength = -1.0;
-  m_FilterLength = -1.0;
+  m_DilFilterLength = -1.0;
+  m_EroFilterLength = -1.0;
   m_UseImageSpacing = true;
   this->SetNumberOfRequiredInputs(2);
   m_TargetIndex.Fill(0);
@@ -21,9 +22,9 @@ DirectionalErodeDilateImageFilter<TInputImage, TMaskImage, TVectorImage, TFuncti
 
 }
 
-template<class TInputImage, class TMaskImage, class TVectorImage, class TFunction1>
+template<class TInputImage, class TMaskImage, class TVectorImage>
 void
-DirectionalErodeDilateImageFilter<TInputImage, TMaskImage, TVectorImage, TFunction1>
+DirectionalCloseImageFilter<TInputImage, TMaskImage, TVectorImage>
 ::GenerateInputRequestedRegion()
 {
   // call the superclass' implementation of this method
@@ -49,23 +50,23 @@ DirectionalErodeDilateImageFilter<TInputImage, TMaskImage, TVectorImage, TFuncti
     }
 }
 
-template<class TInputImage, class TMaskImage, class TVectorImage, class TFunction1>
+template<class TInputImage, class TMaskImage, class TVectorImage>
 void
-DirectionalErodeDilateImageFilter<TInputImage, TMaskImage, TVectorImage, TFunction1>
+DirectionalCloseImageFilter<TInputImage, TMaskImage, TVectorImage>
 ::EnlargeOutputRequestedRegion(DataObject *)
 {
   this->GetOutput()->SetRequestedRegion( this->GetOutput()->GetLargestPossibleRegion() );
 }
 
-template<class TInputImage, class TMaskImage, class TVectorImage, class TFunction1>
+template<class TInputImage, class TMaskImage, class TVectorImage>
 void
-DirectionalErodeDilateImageFilter<TInputImage, TMaskImage, TVectorImage, TFunction1>
+DirectionalCloseImageFilter<TInputImage, TMaskImage, TVectorImage>
 ::GenerateData()
 {
 
   this->AllocateOutputs();
 
-  if ((m_LineLength < 0) || (m_FilterLength < 0) ) 
+  if ((m_LineLength < 0) || (m_DilFilterLength < 0) || (m_EroFilterLength < 0)) 
     {
     itkGenericExceptionMacro(<< "Must set line length and filter length" );
     }
@@ -75,6 +76,7 @@ DirectionalErodeDilateImageFilter<TInputImage, TMaskImage, TVectorImage, TFuncti
   typename VectorImageType::ConstPointer   vec = this->GetVectorImage();
   typename MaskImageType::ConstPointer    mask = this->GetMaskImage();
 
+  m_Boundary = NumericTraits<PixelType>::NonpositiveMin();
   output->FillBuffer(m_Boundary);
 
   typename InputImageType::RegionType IReg = input->GetLargestPossibleRegion();
@@ -97,7 +99,7 @@ DirectionalErodeDilateImageFilter<TInputImage, TMaskImage, TVectorImage, TFuncti
   std::vector<PixelType> reverse(maxbufflength);
 
   BresType BresLine;
-  TFunction1 m_TF;
+  //TFunction1 m_TF;
 
   for (maskIt.GoToBegin(); !maskIt.IsAtEnd(); ++maskIt)
     {
@@ -121,23 +123,31 @@ DirectionalErodeDilateImageFilter<TInputImage, TMaskImage, TVectorImage, TFuncti
       orientation = m_Scale * orientation;
       orientation.Normalize();
       typename MaskImageType::OffsetType off;
-      unsigned OpLength = m_FilterLength;
+      unsigned DilOpLength = m_DilFilterLength;
+      unsigned EroOpLength = m_EroFilterLength;
       if (this->GetUseImageSpacing())
 	{
 	// figure out the line and operation length in voxels
 	// normalize the orientation
-	float OpLengthFl = 0.;
+	float DilOpLengthFl = 0.;
+	float EroOpLengthFl = 0.;
 	for (unsigned g = 0; g < InputImageType::ImageDimension ; ++g)
 	  {
 	  off[g] = static_cast<typename MaskImageType::OffsetType::OffsetValueType>(orientation[g] * m_LineLength / spacing[g]);
 	  // figure out the length of the operation, in voxels
-	  OpLengthFl += vcl_abs(orientation[g]) * m_FilterLength / spacing[g];
+	  DilOpLengthFl += vcl_abs(orientation[g]) * m_DilFilterLength / spacing[g];
+	  EroOpLengthFl += vcl_abs(orientation[g]) * m_EroFilterLength / spacing[g];
 	  }
-	OpLength = static_cast<unsigned>(OpLengthFl);
+	DilOpLength = static_cast<unsigned>(DilOpLengthFl);
+	EroOpLength = static_cast<unsigned>(EroOpLengthFl);
 	// make sure it is an odd number
-	if (!(OpLength % 2))
+	if (!(DilOpLength % 2))
 	  {
-	  ++OpLength;
+	  ++DilOpLength;
+	  }
+	if (!(EroOpLength % 2))
+	  {
+	  ++EroOpLength;
 	  }
 
 	}
@@ -169,19 +179,37 @@ DirectionalErodeDilateImageFilter<TInputImage, TMaskImage, TVectorImage, TFuncti
 	  break;
 	  }
 	}
-      buffer[0] = m_Boundary;
-      buffer[bufflength+1] = m_Boundary;
-      unsigned int bsize = bufflength + 2;
-      FillForwardExt<PixelType , TFunction1 >(buffer, forward, OpLength, bsize);
-      FillReverseExt<PixelType , TFunction1 >(buffer, reverse, OpLength, bsize);
+      // setup the boundary conditions. Starting point is anchored -
+      // don't do anything unusual. Far end needs to be "safe", so
+      // include a buffer
+      unsigned padsize = std::max(DilOpLength, EroOpLength);
 
-      OneLine(bsize, OpLength, buffer, forward, reverse, m_TF);
+      buffer[0] = m_Boundary;
+      
+      for (unsigned k = bufflength+1; k < bufflength+padsize; k++)
+	{
+	buffer[k] = m_Boundary;
+	}
+      unsigned int bsize = bufflength + 1 + padsize;
+      FillForwardExt<PixelType , DirectionalClose::MaxFunctor<PixelType> >(buffer, forward, DilOpLength, bsize);
+      FillReverseExt<PixelType , DirectionalClose::MaxFunctor<PixelType> >(buffer, reverse, DilOpLength, bsize);
+
+      OneLine<DirectionalClose::MaxFunctor<PixelType> >(bsize, DilOpLength, buffer, forward, reverse, MxFunc);
+
+      buffer[0]=NumericTraits<PixelType>::max();
+
+      // now do the reverse
+      FillForwardExt<PixelType , DirectionalClose::MinFunctor<PixelType> >(buffer, forward, EroOpLength, bsize);
+      FillReverseExt<PixelType , DirectionalClose::MinFunctor<PixelType> >(buffer, reverse, EroOpLength, bsize);
+
+      OneLine<DirectionalClose::MinFunctor<PixelType> >(bsize, EroOpLength, buffer, forward, reverse, MnFunc);
+
       // copy buffer to line - need to mask current contents because
       // lines may overlap
       for (unsigned g = 0; g < bufflength; ++g)
 	{
        	PixelType current = output->GetPixel(BL[g]);
-       	output->SetPixel(BL[g], m_TF(current, buffer[g+1]));
+       	output->SetPixel(BL[g], MxFunc(current, buffer[g+1]));
        	}
 
       }
@@ -189,9 +217,10 @@ DirectionalErodeDilateImageFilter<TInputImage, TMaskImage, TVectorImage, TFuncti
 
 }
 
-template<class TInputImage, class TMaskImage, class TVectorImage, class TFunction1>
+template<class TInputImage, class TMaskImage, class TVectorImage>
+template <class TFunction1> 
 void
-DirectionalErodeDilateImageFilter<TInputImage, TMaskImage, TVectorImage, TFunction1>
+DirectionalCloseImageFilter<TInputImage, TMaskImage, TVectorImage>
 ::OneLine(unsigned bsize, unsigned OpLength, std::vector<PixelType> &buffer,
 	  std::vector<PixelType> &forward, std::vector<PixelType> &reverse,
 	  TFunction1 &TF)
@@ -246,9 +275,9 @@ DirectionalErodeDilateImageFilter<TInputImage, TMaskImage, TVectorImage, TFuncti
         }
 }
 
-template<class TInputImage, class TMaskImage, class TVectorImage, class TFunction1>
+template<class TInputImage, class TMaskImage, class TVectorImage>
 void
-DirectionalErodeDilateImageFilter<TInputImage, TMaskImage, TVectorImage, TFunction1>
+DirectionalCloseImageFilter<TInputImage, TMaskImage, TVectorImage>
 ::PrintSelf(std::ostream& os, Indent indent) const
 {
   Superclass::PrintSelf(os,indent);

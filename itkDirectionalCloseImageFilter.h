@@ -1,18 +1,19 @@
-#ifndef __itkDirectionalErodeDilateImageFilter_h
-#define __itkDirectionalErodeDilateImageFilter_h
+#ifndef __itkDirectionalCloseImageFilter_h
+#define __itkDirectionalCloseImageFilter_h
 
 #include "itkImageToImageFilter.h"
 #include "itkNumericTraits.h"
 #include "itkProgressReporter.h"
 #include "itkBresenhamLine.h"
-
+#include "itkCovariantVector.h"
 namespace itk
 {
 /**
- * \class DirectionalErodeDilateImageFilter
- * \brief Parent class for morphological operations along lines defined
+ * \class DirectionalCloseImageFilter
+ * \brief Performs a morphological dilation followed by an erosion along lines defined
  * by a vector field. Operations applied whereever the mask image is
- * non zero.
+ * non zero. This does both operations along the line without writing
+ * back to the image in between. Allows sensible safe border options
  *
  *
  * \author Richard Beare, Department of Medicine, Monash University,
@@ -20,7 +21,7 @@ namespace itk
  *
 **/
 
-namespace Directional 
+namespace DirectionalClose
 {
 template< class TPixel >
 class MaxFunctor
@@ -33,19 +34,32 @@ public:
     return vnl_math_max(A, B);
   }
 };
+
+template< class TPixel >
+class MinFunctor
+{
+public:
+  MinFunctor(){}
+  ~MinFunctor(){}
+  inline TPixel operator()(const TPixel & A, const TPixel & B) const
+  {
+    return vnl_math_min(A, B);
+  }
+};
+
 }
 
 template <typename TInputImage,
 	  typename TMaskImage,
-	  typename TVectorImage=TInputImage,
-	  class TFunction1=Directional::MaxFunctor<typename TInputImage::PixelType> >
-class ITK_EXPORT DirectionalErodeDilateImageFilter:
+	  typename TVectorImage=Image<CovariantVector<float, TInputImage::ImageDimension>, TInputImage::ImageDimension >
+	  >
+class ITK_EXPORT DirectionalCloseImageFilter:
     public ImageToImageFilter<TInputImage,TInputImage>
 {
 
 public:
   /** Standard class typedefs. */
-  typedef DirectionalErodeDilateImageFilter  Self;
+  typedef DirectionalCloseImageFilter  Self;
   typedef ImageToImageFilter<TInputImage,TInputImage> Superclass;
   typedef SmartPointer<Self>                   Pointer;
   typedef SmartPointer<const Self>        ConstPointer;
@@ -54,7 +68,7 @@ public:
   itkNewMacro(Self);
 
   /** Runtime information support. */
-  itkTypeMacro(DirectionalErodeDilateImageFilter, ImageToImageFilter);
+  itkTypeMacro(DirectionalCloseImageFilter, ImageToImageFilter);
 
   /** Pixel Type of the input image */
   typedef TInputImage                                    InputImageType;
@@ -129,8 +143,11 @@ public:
   itkSetMacro(LineLength, float);
   itkGetConstReferenceMacro(LineLength, float);
 
-  itkSetMacro(FilterLength, float);
-  itkGetConstReferenceMacro(FilterLength, float);
+  itkSetMacro(DilFilterLength, float);
+  itkGetConstReferenceMacro(DilFilterLength, float);
+
+  itkSetMacro(EroFilterLength, float);
+  itkGetConstReferenceMacro(EroFilterLength, float);
 
   /** 
    * Set/Get the scale - used to reverse the direction of the
@@ -157,8 +174,8 @@ public:
 #endif
 
 protected:
-  DirectionalErodeDilateImageFilter();
-  virtual ~DirectionalErodeDilateImageFilter() {};
+  DirectionalCloseImageFilter();
+  virtual ~DirectionalCloseImageFilter() {};
   void PrintSelf(std::ostream& os, Indent indent) const;
   
   void GenerateInputRequestedRegion();
@@ -173,15 +190,22 @@ protected:
 
   float m_Scale;
   float m_LineLength;
-  float m_FilterLength;
+  float m_DilFilterLength;
+  float m_EroFilterLength;
   bool m_UseImageSpacing;
   PixelType m_Boundary;
 
+  DirectionalClose::MaxFunctor<PixelType> MxFunc;
+  DirectionalClose::MinFunctor<PixelType> MnFunc;
+
+  //MxFunctionType m_MxFunc;
+
+  template <class TFunction1>
   void OneLine(unsigned bsize, unsigned OpLength, std::vector<PixelType> &buffer,
-	       std::vector<PixelType> &forward, std::vector<PixelType> &reverse,
-	       TFunction1 &TF);
+   	       std::vector<PixelType> &forward, std::vector<PixelType> &reverse,
+   	       TFunction1 &TF);
 private:
-  DirectionalErodeDilateImageFilter(const Self&); //purposely not implemented
+  DirectionalCloseImageFilter(const Self&); //purposely not implemented
   void operator=(const Self&); //purposely not implemented
 
   typedef BresenhamLine< itkGetStaticConstMacro(InputImageDimension) > BresType;
@@ -192,7 +216,7 @@ private:
 } // end namespace itk
 
 #ifndef ITK_MANUAL_INSTANTIATION
-#include "itkDirectionalErodeDilateImageFilter.hxx"
+#include "itkDirectionalCloseImageFilter.hxx"
 #endif
 
 
